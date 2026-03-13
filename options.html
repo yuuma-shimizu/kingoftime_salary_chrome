@@ -79,6 +79,29 @@
       color: #888;
       margin-top: 5px;
     }
+    .auto-calc-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .auto-calc-row input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+    .auto-calc-row label {
+      display: inline;
+      font-weight: normal;
+      margin-bottom: 0;
+    }
+    input[type="number"]:disabled {
+      background-color: #e9ecef;
+      color: #6c757d;
+    }
+    .calc-info {
+      font-size: 11px;
+      color: #4a90d9;
+      margin-top: 3px;
+    }
   </style>
 </head>
 <body>
@@ -92,19 +115,34 @@
 
   <div class="form-group">
     <label for="overtimeRate">残業時給<span class="unit">（円）</span></label>
+    <div class="auto-calc-row">
+      <input type="checkbox" id="autoCalcOvertime">
+      <label for="autoCalcOvertime">自動計算（基本時給×1.25）</label>
+    </div>
     <input type="number" id="overtimeRate" min="0" step="1">
+    <p class="calc-info" id="overtimeCalcInfo"></p>
     <p class="description">残業・休日勤務に適用される時給</p>
   </div>
 
   <div class="form-group">
     <label for="nightRate">深夜労働時給<span class="unit">（円）</span></label>
+    <div class="auto-calc-row">
+      <input type="checkbox" id="autoCalcNight">
+      <label for="autoCalcNight">自動計算（基本時給×1.25）</label>
+    </div>
     <input type="number" id="nightRate" min="0" step="1">
+    <p class="calc-info" id="nightCalcInfo"></p>
     <p class="description">深夜労働（22:00〜5:00）に適用される時給</p>
   </div>
 
   <div class="form-group">
     <label for="nightOvertimeRate">深夜残業時給<span class="unit">（円）</span></label>
+    <div class="auto-calc-row">
+      <input type="checkbox" id="autoCalcNightOvertime">
+      <label for="autoCalcNightOvertime">自動計算（基本時給×1.5）</label>
+    </div>
     <input type="number" id="nightOvertimeRate" min="0" step="1">
+    <p class="calc-info" id="nightOvertimeCalcInfo"></p>
     <p class="description">深夜残業に適用される時給</p>
   </div>
 
