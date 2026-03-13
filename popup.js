@@ -14,8 +14,7 @@ function loadSettings() {
       hourlyRate: DEFAULT_HOURLY_RATE,
       nightRate: DEFAULT_NIGHT_RATE,
       deductBreakTime: false,
-      breakTime6h: 45,
-      breakTime8h: 60
+      breakPeriods: [{ start: '12:00', end: '13:00' }]
     }, (settings) => {
       currentSettings = settings;
       resolve(settings);
@@ -23,12 +22,42 @@ function loadSettings() {
   });
 }
 
-// 休憩時間を計算（分）
-function getBreakTimeMinutes(elapsedHours) {
+// 時刻文字列を今日の分数に変換（0:00からの分数）
+function timeToMinutes(timeStr) {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// 休憩時間を計算（分）- 時間帯ベース
+function getBreakTimeMinutes(startTime, currentTime) {
   if (!currentSettings.deductBreakTime) return 0;
-  if (elapsedHours > 8) return currentSettings.breakTime8h;
-  if (elapsedHours > 6) return currentSettings.breakTime6h;
-  return 0;
+  if (!currentSettings.breakPeriods || currentSettings.breakPeriods.length === 0) return 0;
+
+  const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+
+  let totalBreakMinutes = 0;
+
+  for (const period of currentSettings.breakPeriods) {
+    const breakStart = timeToMinutes(period.start);
+    const breakEnd = timeToMinutes(period.end);
+
+    // 休憩時間帯が勤務時間内にあるかチェック
+    if (breakEnd <= startMinutes || breakStart >= currentMinutes) {
+      // 休憩時間帯が勤務時間外
+      continue;
+    }
+
+    // 重複部分を計算
+    const overlapStart = Math.max(startMinutes, breakStart);
+    const overlapEnd = Math.min(currentMinutes, breakEnd);
+
+    if (overlapEnd > overlapStart) {
+      totalBreakMinutes += overlapEnd - overlapStart;
+    }
+  }
+
+  return totalBreakMinutes;
 }
 
 // 時刻文字列をDateオブジェクトに変換
@@ -68,10 +97,9 @@ function updateDisplay() {
 
   const now = new Date();
   const elapsedSeconds = (now - workStartTime) / 1000;
-  const elapsedHours = elapsedSeconds / 3600;
 
-  // 休憩時間を控除
-  const breakTimeMinutes = getBreakTimeMinutes(elapsedHours);
+  // 休憩時間を控除（時間帯ベース）
+  const breakTimeMinutes = getBreakTimeMinutes(workStartTime, now);
   const breakTimeSeconds = breakTimeMinutes * 60;
   const workSeconds = Math.max(0, elapsedSeconds - breakTimeSeconds);
 

@@ -102,6 +102,27 @@
       color: #4a90d9;
       margin-top: 3px;
     }
+    .break-period {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .break-period input[type="time"] {
+      padding: 6px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .break-period .remove-btn {
+      padding: 4px 8px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -158,18 +179,18 @@
       <input type="checkbox" id="deductBreakTime">
       <label for="deductBreakTime">休憩時間を給与から控除する</label>
     </div>
-    <p class="description">労働基準法に基づく休憩時間</p>
     <div id="breakTimeSettings" style="margin-top: 10px;">
-      <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-        <div style="flex: 1;">
-          <label for="breakTime6h" style="font-size: 12px;">6時間超の休憩<span class="unit">（分）</span></label>
-          <input type="number" id="breakTime6h" min="0" step="1" value="45">
-        </div>
-        <div style="flex: 1;">
-          <label for="breakTime8h" style="font-size: 12px;">8時間超の休憩<span class="unit">（分）</span></label>
-          <input type="number" id="breakTime8h" min="0" step="1" value="60">
-        </div>
-      </div>
+      <p class="description" style="margin-bottom: 8px;">休憩時間帯を設定（複数可）</p>
+      <div id="breakPeriods"></div>
+      <button type="button" id="addBreakPeriod" style="
+        padding: 5px 10px;
+        font-size: 12px;
+        background: #e9ecef;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 5px;
+      ">+ 休憩時間を追加</button>
     </div>
   </div>
 
