@@ -245,6 +245,23 @@ const observer = new MutationObserver((mutations) => {
   }
 });
 
+// 定期的に勤務状態を監視（30秒ごと）
+let statusCheckInterval = null;
+
+function startStatusMonitoring() {
+  if (statusCheckInterval) return;
+
+  statusCheckInterval = setInterval(() => {
+    const status = checkWorkingStatus();
+    saveWorkStatusToStorage(status);
+
+    // 退勤していたらリアルタイムカウントを停止
+    if (!status.isWorking && realtimeInterval) {
+      stopRealtime();
+    }
+  }, 30000); // 30秒ごとにチェック
+}
+
 // 初期実行とObserver開始
 window.addEventListener('load', () => {
   setTimeout(async () => {
@@ -260,6 +277,8 @@ window.addEventListener('load', () => {
     }
     // 勤務中ならリアルタイムカウント開始
     checkAndStartRealtime();
+    // 定期監視開始
+    startStatusMonitoring();
   }, 1000);
 });
 
