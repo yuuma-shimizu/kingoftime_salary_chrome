@@ -11,7 +11,9 @@ let currentSettings = {
   overtimeRate: DEFAULT_OVERTIME_RATE,
   nightRate: DEFAULT_NIGHT_RATE,
   nightOvertimeRate: DEFAULT_NIGHT_OVERTIME_RATE,
-  transportationFee: DEFAULT_TRANSPORTATION_FEE
+  transportationFee: DEFAULT_TRANSPORTATION_FEE,
+  deductBreakTime: false,
+  breakPeriods: [{ start: '12:00', end: '13:00' }]
 };
 
 // 設定を読み込む
@@ -22,7 +24,9 @@ function loadSettings() {
       overtimeRate: DEFAULT_OVERTIME_RATE,
       nightRate: DEFAULT_NIGHT_RATE,
       nightOvertimeRate: DEFAULT_NIGHT_OVERTIME_RATE,
-      transportationFee: DEFAULT_TRANSPORTATION_FEE
+      transportationFee: DEFAULT_TRANSPORTATION_FEE,
+      deductBreakTime: false,
+      breakPeriods: [{ start: '12:00', end: '13:00' }]
     }, (settings) => {
       currentSettings = settings;
       resolve(settings);
@@ -322,6 +326,12 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     if (changes.transportationFee) {
       currentSettings.transportationFee = changes.transportationFee.newValue;
     }
+    if (changes.deductBreakTime) {
+      currentSettings.deductBreakTime = changes.deductBreakTime.newValue;
+    }
+    if (changes.breakPeriods) {
+      currentSettings.breakPeriods = changes.breakPeriods.newValue;
+    }
     parseWorkTimeTable();
   }
 });
@@ -483,27 +493,72 @@ function getCurrentHourlyRate() {
   return currentSettings.hourlyRate;
 }
 
+// 時刻文字列を今日の分数に変換（0:00からの分数）
+function timeToMinutes(timeStr) {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// 休憩時間を計算（分）- 時間帯ベース
+function getBreakTimeMinutes(startTime, currentTime) {
+  if (!currentSettings.deductBreakTime) return 0;
+  if (!currentSettings.breakPeriods || currentSettings.breakPeriods.length === 0) return 0;
+
+  const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+
+  let totalBreakMinutes = 0;
+
+  for (const period of currentSettings.breakPeriods) {
+    const breakStart = timeToMinutes(period.start);
+    const breakEnd = timeToMinutes(period.end);
+
+    // 休憩時間帯が勤務時間内にあるかチェック
+    if (breakEnd <= startMinutes || breakStart >= currentMinutes) {
+      // 休憩時間帯が勤務時間外
+      continue;
+    }
+
+    // 重複部分を計算
+    const overlapStart = Math.max(startMinutes, breakStart);
+    const overlapEnd = Math.min(currentMinutes, breakEnd);
+
+    if (overlapEnd > overlapStart) {
+      totalBreakMinutes += overlapEnd - overlapStart;
+    }
+  }
+
+  return totalBreakMinutes;
+}
+
 // リアルタイム表示を更新
 function updateRealtimeDisplay() {
   if (!workStartTime) return;
 
   const now = new Date();
   const elapsedSeconds = (now - workStartTime) / 1000;
+
+  // 休憩時間を控除（時間帯ベース）
+  const breakTimeMinutes = getBreakTimeMinutes(workStartTime, now);
+  const breakTimeSeconds = breakTimeMinutes * 60;
+  const workSeconds = Math.max(0, elapsedSeconds - breakTimeSeconds);
+
   const hourlyRate = getCurrentHourlyRate();
-  const currentEarnings = (elapsedSeconds / 3600) * hourlyRate;
+  const currentEarnings = (workSeconds / 3600) * hourlyRate;
 
   const elapsedSpan = document.getElementById('realtime-elapsed');
   const earningsSpan = document.getElementById('realtime-earnings');
   const rateSpan = document.getElementById('realtime-rate');
 
   if (elapsedSpan) {
-    elapsedSpan.textContent = formatElapsedTime(elapsedSeconds);
+    // 休憩控除ありの場合は表示を変える
+    const breakInfo = breakTimeMinutes > 0 ? `（休憩${breakTimeMinutes}分控除）` : '';
+    elapsedSpan.textContent = formatElapsedTime(workSeconds) + breakInfo;
   }
   if (earningsSpan) {
-    earningsSpan.textContent = currentEarnings.toFixed(2);
+    earningsSpan.textContent = Math.floor(currentEarnings).toLocaleString();
   }
   if (rateSpan) {
-    const now = new Date();
     const hour = now.getHours();
     rateSpan.textContent = (hour >= 22 || hour < 5) ? '深夜' : '通常';
   }
