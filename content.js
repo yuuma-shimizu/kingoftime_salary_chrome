@@ -398,49 +398,47 @@ function createRealtimeSection(startTimeStr) {
 
   const section = document.createElement('div');
   section.id = 'realtime-section';
-  section.style.cssText = `
-    margin-top: 15px;
-    padding: 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
-    color: white;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  section.style.marginTop = '20px';
+
+  // ヘッダー作成
+  const header = document.createElement('h5');
+  header.className = 'htBlock-box_caption';
+  header.textContent = 'リアルタイム給与（勤務中）';
+
+  // テーブルのdiv作成
+  const tableDiv = document.createElement('div');
+  tableDiv.className = 'htBlock-normalTable';
+
+  // テーブル作成
+  tableDiv.innerHTML = `
+    <table class="specific-table_800">
+      <thead>
+        <tr>
+          <th class="fixed_work"><p>出勤時間</p></th>
+          <th class="overtime_work"><p>経過時間</p></th>
+          <th class="night_work"><p>時給区分</p></th>
+          <th class="all_work_time"><p>現在の稼ぎ</p></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fixed_work">${startTimeStr}</td>
+          <td class="overtime_work" id="realtime-elapsed">0時間0分0秒</td>
+          <td class="night_work" id="realtime-rate">通常</td>
+          <td class="all_work_time"><span id="realtime-earnings">0.00</span>円</td>
+        </tr>
+      </tbody>
+    </table>
   `;
 
-  section.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span style="font-weight: bold; font-size: 14px;">🕐 リアルタイム給与</span>
-      <span style="font-size: 12px; opacity: 0.9;">出勤: ${startTimeStr}</span>
-    </div>
-    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-      <div>
-        <div style="font-size: 11px; opacity: 0.8;">経過時間</div>
-        <div style="font-size: 18px; font-weight: bold;" id="realtime-elapsed">0時間0分0秒</div>
-      </div>
-      <div>
-        <div style="font-size: 11px; opacity: 0.8;">現在の稼ぎ（<span id="realtime-rate">通常</span>時給）</div>
-        <div style="font-size: 24px; font-weight: bold;"><span id="realtime-earnings">0.00</span>円</div>
-      </div>
-    </div>
-    <button id="stop-realtime" style="
-      margin-top: 10px;
-      padding: 5px 15px;
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
-      border-radius: 4px;
-      color: white;
-      cursor: pointer;
-      font-size: 12px;
-    ">停止</button>
-  `;
+  // セクションに要素を追加
+  section.appendChild(header);
+  section.appendChild(tableDiv);
 
   const salarySection = document.getElementById('salary-calculation-section');
   if (salarySection) {
     salarySection.appendChild(section);
   }
-
-  // 停止ボタンのイベント
-  document.getElementById('stop-realtime').addEventListener('click', stopRealtime);
 }
 
 // リアルタイムカウント開始
