@@ -5,6 +5,7 @@ const DEFAULT_NIGHT_RATE = 1438;
 let currentSettings = null;
 let workStartTime = null;
 let updateInterval = null;
+let monthlySalaryTotal = 0;
 
 // 設定を読み込む
 function loadSettings() {
@@ -64,7 +65,14 @@ function updateDisplay() {
 
   document.getElementById('elapsed').textContent = formatElapsedTime(elapsedSeconds);
   document.getElementById('rate-type').textContent = rateType;
-  document.getElementById('earnings').textContent = currentEarnings.toFixed(2);
+  document.getElementById('earnings').textContent = currentEarnings.toFixed(0);
+
+  // リアルタイム累積を更新
+  const realtimeTotal = document.getElementById('realtime-total');
+  if (realtimeTotal) {
+    const total = monthlySalaryTotal + currentEarnings;
+    realtimeTotal.textContent = Math.floor(total).toLocaleString();
+  }
 }
 
 // 勤務中UIを表示
@@ -143,16 +151,17 @@ async function showMonthlySalary() {
   if (existingSection) existingSection.remove();
 
   if (salaryData && salaryData.yearMonth === currentYearMonth) {
+    monthlySalaryTotal = salaryData.total;
+
     const section = document.createElement('div');
     section.id = 'monthly-salary';
     section.className = 'monthly-salary';
     section.innerHTML = `
-      <div class="monthly-header">${now.getMonth() + 1}月の累積給与</div>
-      <div class="monthly-total">${salaryData.total.toLocaleString()}円</div>
+      <div class="monthly-header">${now.getMonth() + 1}月のリアルタイム累積</div>
+      <div class="monthly-total"><span id="realtime-total">${salaryData.total.toLocaleString()}</span>円</div>
       <div class="monthly-details">
-        <span>基本: ${salaryData.regular.toLocaleString()}</span>
-        <span>残業: ${salaryData.overtime.toLocaleString()}</span>
-        <span>交通費: ${salaryData.transportation.toLocaleString()}</span>
+        <span>確定: ${salaryData.total.toLocaleString()}</span>
+        <span>+本日</span>
       </div>
     `;
 
