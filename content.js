@@ -258,6 +258,8 @@ window.addEventListener('load', () => {
         subtree: true
       });
     }
+    // 勤務中ならリアルタイムカウント開始
+    checkAndStartRealtime();
   }, 1000);
 });
 
@@ -282,3 +284,197 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     parseWorkTimeTable();
   }
 });
+
+// ========== リアルタイムカウントアップ機能 ==========
+
+let realtimeInterval = null;
+let workStartTime = null;
+
+// 今日の日付の行を探す
+function findTodayRow() {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${month}/${day}`;
+
+  const rows = document.querySelectorAll('.htBlock-adjastableTableF tbody tr');
+  for (const row of rows) {
+    const dateCell = row.querySelector('td[data-ht-sort-index="WORK_DAY"] p');
+    if (dateCell && dateCell.textContent.includes(todayStr)) {
+      return row;
+    }
+  }
+  return null;
+}
+
+// 勤務中かどうかを判断
+function checkWorkingStatus() {
+  const todayRow = findTodayRow();
+  if (!todayRow) {
+    return { isWorking: false, startTime: null };
+  }
+
+  const cells = todayRow.querySelectorAll('td.start_end_timerecord p');
+  if (cells.length < 2) {
+    return { isWorking: false, startTime: null };
+  }
+
+  const startTimeText = cells[0].textContent.trim();
+  const endTimeText = cells[1].textContent.trim();
+
+  // 出勤時間があり、退勤時間がない = 勤務中
+  if (startTimeText && !endTimeText) {
+    return { isWorking: true, startTime: startTimeText };
+  }
+
+  return { isWorking: false, startTime: null };
+}
+
+// 時刻文字列をDateオブジェクトに変換（今日の日付で）
+function parseTimeToDate(timeStr) {
+  const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
+// 経過時間をフォーマット
+function formatElapsedTime(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${hours}時間${minutes}分${secs}秒`;
+}
+
+// 現在の時給を判定（深夜かどうか）
+function getCurrentHourlyRate() {
+  const now = new Date();
+  const hour = now.getHours();
+
+  // 22:00〜5:00は深夜
+  if (hour >= 22 || hour < 5) {
+    return currentSettings.nightRate;
+  }
+  return currentSettings.hourlyRate;
+}
+
+// リアルタイム表示を更新
+function updateRealtimeDisplay() {
+  if (!workStartTime) return;
+
+  const now = new Date();
+  const elapsedSeconds = (now - workStartTime) / 1000;
+  const hourlyRate = getCurrentHourlyRate();
+  const currentEarnings = (elapsedSeconds / 3600) * hourlyRate;
+
+  const elapsedSpan = document.getElementById('realtime-elapsed');
+  const earningsSpan = document.getElementById('realtime-earnings');
+  const rateSpan = document.getElementById('realtime-rate');
+
+  if (elapsedSpan) {
+    elapsedSpan.textContent = formatElapsedTime(elapsedSeconds);
+  }
+  if (earningsSpan) {
+    earningsSpan.textContent = currentEarnings.toFixed(2);
+  }
+  if (rateSpan) {
+    const now = new Date();
+    const hour = now.getHours();
+    rateSpan.textContent = (hour >= 22 || hour < 5) ? '深夜' : '通常';
+  }
+}
+
+// リアルタイムセクションを作成
+function createRealtimeSection(startTimeStr) {
+  const existingSection = document.getElementById('realtime-section');
+  if (existingSection) {
+    existingSection.remove();
+  }
+
+  const section = document.createElement('div');
+  section.id = 'realtime-section';
+  section.style.cssText = `
+    margin-top: 15px;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  `;
+
+  section.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span style="font-weight: bold; font-size: 14px;">🕐 リアルタイム給与</span>
+      <span style="font-size: 12px; opacity: 0.9;">出勤: ${startTimeStr}</span>
+    </div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+      <div>
+        <div style="font-size: 11px; opacity: 0.8;">経過時間</div>
+        <div style="font-size: 18px; font-weight: bold;" id="realtime-elapsed">0時間0分0秒</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; opacity: 0.8;">現在の稼ぎ（<span id="realtime-rate">通常</span>時給）</div>
+        <div style="font-size: 24px; font-weight: bold;"><span id="realtime-earnings">0.00</span>円</div>
+      </div>
+    </div>
+    <button id="stop-realtime" style="
+      margin-top: 10px;
+      padding: 5px 15px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+    ">停止</button>
+  `;
+
+  const salarySection = document.getElementById('salary-calculation-section');
+  if (salarySection) {
+    salarySection.appendChild(section);
+  }
+
+  // 停止ボタンのイベント
+  document.getElementById('stop-realtime').addEventListener('click', stopRealtime);
+}
+
+// リアルタイムカウント開始
+function startRealtime(startTimeStr) {
+  workStartTime = parseTimeToDate(startTimeStr);
+  if (!workStartTime) return;
+
+  createRealtimeSection(startTimeStr);
+  updateRealtimeDisplay();
+
+  // 1秒ごとに更新
+  realtimeInterval = setInterval(updateRealtimeDisplay, 1000);
+}
+
+// リアルタイムカウント停止
+function stopRealtime() {
+  if (realtimeInterval) {
+    clearInterval(realtimeInterval);
+    realtimeInterval = null;
+  }
+  workStartTime = null;
+
+  const section = document.getElementById('realtime-section');
+  if (section) {
+    section.remove();
+  }
+}
+
+// 勤務中チェックと自動開始
+function checkAndStartRealtime() {
+  const status = checkWorkingStatus();
+  console.log('勤務状態:', status);
+
+  if (status.isWorking && status.startTime) {
+    startRealtime(status.startTime);
+  }
+}
