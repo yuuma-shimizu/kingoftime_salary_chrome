@@ -12,12 +12,23 @@ function loadSettings() {
   return new Promise((resolve) => {
     chrome.storage.sync.get({
       hourlyRate: DEFAULT_HOURLY_RATE,
-      nightRate: DEFAULT_NIGHT_RATE
+      nightRate: DEFAULT_NIGHT_RATE,
+      deductBreakTime: false,
+      breakTime6h: 45,
+      breakTime8h: 60
     }, (settings) => {
       currentSettings = settings;
       resolve(settings);
     });
   });
+}
+
+// 休憩時間を計算（分）
+function getBreakTimeMinutes(elapsedHours) {
+  if (!currentSettings.deductBreakTime) return 0;
+  if (elapsedHours > 8) return currentSettings.breakTime8h;
+  if (elapsedHours > 6) return currentSettings.breakTime6h;
+  return 0;
 }
 
 // 時刻文字列をDateオブジェクトに変換
@@ -57,13 +68,22 @@ function updateDisplay() {
 
   const now = new Date();
   const elapsedSeconds = (now - workStartTime) / 1000;
+  const elapsedHours = elapsedSeconds / 3600;
+
+  // 休憩時間を控除
+  const breakTimeMinutes = getBreakTimeMinutes(elapsedHours);
+  const breakTimeSeconds = breakTimeMinutes * 60;
+  const workSeconds = Math.max(0, elapsedSeconds - breakTimeSeconds);
+
   const hourlyRate = getCurrentHourlyRate();
-  const currentEarnings = (elapsedSeconds / 3600) * hourlyRate;
+  const currentEarnings = (workSeconds / 3600) * hourlyRate;
 
   const hour = now.getHours();
   const rateType = (hour >= 22 || hour < 5) ? '深夜' : '通常';
 
-  document.getElementById('elapsed').textContent = formatElapsedTime(elapsedSeconds);
+  // 休憩控除ありの場合は表示を変える
+  const breakInfo = breakTimeMinutes > 0 ? `（休憩${breakTimeMinutes}分控除）` : '';
+  document.getElementById('elapsed').textContent = formatElapsedTime(workSeconds) + breakInfo;
   document.getElementById('rate-type').textContent = rateType;
   document.getElementById('earnings').textContent = Math.floor(currentEarnings).toLocaleString();
 

@@ -4,6 +4,9 @@ const DEFAULT_OVERTIME_RATE = 1438;
 const DEFAULT_NIGHT_RATE = 1438;
 const DEFAULT_NIGHT_OVERTIME_RATE = 1725;
 const DEFAULT_TRANSPORTATION_FEE = 0;
+const DEFAULT_DEDUCT_BREAK_TIME = false;
+const DEFAULT_BREAK_TIME_6H = 45;
+const DEFAULT_BREAK_TIME_8H = 60;
 
 // 自動計算の倍率
 const OVERTIME_MULTIPLIER = 1.25;
@@ -47,6 +50,14 @@ function updateInputStates() {
   document.getElementById('overtimeRate').disabled = document.getElementById('autoCalcOvertime').checked;
   document.getElementById('nightRate').disabled = document.getElementById('autoCalcNight').checked;
   document.getElementById('nightOvertimeRate').disabled = document.getElementById('autoCalcNightOvertime').checked;
+
+  // 休憩時間設定の表示/非表示
+  const breakTimeSettings = document.getElementById('breakTimeSettings');
+  const deductBreakTime = document.getElementById('deductBreakTime').checked;
+  breakTimeSettings.style.display = deductBreakTime ? 'block' : 'none';
+  document.getElementById('breakTime6h').disabled = !deductBreakTime;
+  document.getElementById('breakTime8h').disabled = !deductBreakTime;
+
   updateAutoCalcValues();
 }
 
@@ -60,7 +71,10 @@ function loadSettings() {
     transportationFee: DEFAULT_TRANSPORTATION_FEE,
     autoCalcOvertime: false,
     autoCalcNight: false,
-    autoCalcNightOvertime: false
+    autoCalcNightOvertime: false,
+    deductBreakTime: DEFAULT_DEDUCT_BREAK_TIME,
+    breakTime6h: DEFAULT_BREAK_TIME_6H,
+    breakTime8h: DEFAULT_BREAK_TIME_8H
   }, (settings) => {
     document.getElementById('hourlyRate').value = settings.hourlyRate;
     document.getElementById('overtimeRate').value = settings.overtimeRate;
@@ -70,6 +84,9 @@ function loadSettings() {
     document.getElementById('autoCalcOvertime').checked = settings.autoCalcOvertime;
     document.getElementById('autoCalcNight').checked = settings.autoCalcNight;
     document.getElementById('autoCalcNightOvertime').checked = settings.autoCalcNightOvertime;
+    document.getElementById('deductBreakTime').checked = settings.deductBreakTime;
+    document.getElementById('breakTime6h').value = settings.breakTime6h;
+    document.getElementById('breakTime8h').value = settings.breakTime8h;
     updateInputStates();
   });
 }
@@ -84,6 +101,9 @@ function saveSettings() {
   const autoCalcOvertime = document.getElementById('autoCalcOvertime').checked;
   const autoCalcNight = document.getElementById('autoCalcNight').checked;
   const autoCalcNightOvertime = document.getElementById('autoCalcNightOvertime').checked;
+  const deductBreakTime = document.getElementById('deductBreakTime').checked;
+  const breakTime6h = parseInt(document.getElementById('breakTime6h').value, 10);
+  const breakTime8h = parseInt(document.getElementById('breakTime8h').value, 10);
 
   if (isNaN(hourlyRate) || isNaN(overtimeRate) || isNaN(nightRate) || isNaN(nightOvertimeRate) || isNaN(transportationFee)) {
     showStatus('数値を入力してください', false);
@@ -103,7 +123,10 @@ function saveSettings() {
     transportationFee: transportationFee,
     autoCalcOvertime: autoCalcOvertime,
     autoCalcNight: autoCalcNight,
-    autoCalcNightOvertime: autoCalcNightOvertime
+    autoCalcNightOvertime: autoCalcNightOvertime,
+    deductBreakTime: deductBreakTime,
+    breakTime6h: breakTime6h,
+    breakTime8h: breakTime8h
   }, () => {
     showStatus('設定を保存しました', true);
   });
@@ -131,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('autoCalcOvertime').addEventListener('change', updateInputStates);
   document.getElementById('autoCalcNight').addEventListener('change', updateInputStates);
   document.getElementById('autoCalcNightOvertime').addEventListener('change', updateInputStates);
+  document.getElementById('deductBreakTime').addEventListener('change', updateInputStates);
 
   // 保存ボタン
   document.getElementById('save').addEventListener('click', saveSettings);

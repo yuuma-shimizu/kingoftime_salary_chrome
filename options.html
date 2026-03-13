@@ -152,6 +152,27 @@
     <p class="description">1日あたりの交通費（出勤日数分を計算）</p>
   </div>
 
+  <div class="form-group">
+    <label>休憩時間の控除</label>
+    <div class="auto-calc-row">
+      <input type="checkbox" id="deductBreakTime">
+      <label for="deductBreakTime">休憩時間を給与から控除する</label>
+    </div>
+    <p class="description">労働基準法に基づく休憩時間</p>
+    <div id="breakTimeSettings" style="margin-top: 10px;">
+      <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+        <div style="flex: 1;">
+          <label for="breakTime6h" style="font-size: 12px;">6時間超の休憩<span class="unit">（分）</span></label>
+          <input type="number" id="breakTime6h" min="0" step="1" value="45">
+        </div>
+        <div style="flex: 1;">
+          <label for="breakTime8h" style="font-size: 12px;">8時間超の休憩<span class="unit">（分）</span></label>
+          <input type="number" id="breakTime8h" min="0" step="1" value="60">
+        </div>
+      </div>
+    </div>
+  </div>
+
   <button id="save">保存</button>
   <div id="status" class="status"></div>
 
