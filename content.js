@@ -1,32 +1,86 @@
-// 給与設定
-const HOURLY_RATE = 1150;  // 基本時給（円）
-const OVERTIME_RATE = 1438; // 残業時給（円）
+// デフォルトの給与設定
+const DEFAULT_HOURLY_RATE = 1150;  // 基本時給（円）
+const DEFAULT_OVERTIME_RATE = 1438; // 残業時給（円）
+const DEFAULT_NIGHT_RATE = 1438; // 深夜時給（円）
+const DEFAULT_NIGHT_OVERTIME_RATE = 1725; // 深夜残業時給（円）
+const DEFAULT_TRANSPORTATION_FEE = 0; // 交通費（円/日）
+
+// 現在の設定を保持する変数
+let currentSettings = {
+  hourlyRate: DEFAULT_HOURLY_RATE,
+  overtimeRate: DEFAULT_OVERTIME_RATE,
+  nightRate: DEFAULT_NIGHT_RATE,
+  nightOvertimeRate: DEFAULT_NIGHT_OVERTIME_RATE,
+  transportationFee: DEFAULT_TRANSPORTATION_FEE
+};
+
+// 設定を読み込む
+function loadSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({
+      hourlyRate: DEFAULT_HOURLY_RATE,
+      overtimeRate: DEFAULT_OVERTIME_RATE,
+      nightRate: DEFAULT_NIGHT_RATE,
+      nightOvertimeRate: DEFAULT_NIGHT_OVERTIME_RATE,
+      transportationFee: DEFAULT_TRANSPORTATION_FEE
+    }, (settings) => {
+      currentSettings = settings;
+      resolve(settings);
+    });
+  });
+}
 
 function calculateSalary(workData) {
   const salary = {
-    regular: 0,    // 通常勤務の給与
-    overtime: 0,   // 残業代
-    total: 0       // 合計
+    regular: 0,       // 通常勤務の給与
+    overtime: 0,      // 残業代
+    night: 0,         // 深夜労働代
+    nightOvertime: 0, // 深夜残業代
+    transportation: 0, // 交通費
+    total: 0          // 合計
   };
+
+  let totalWorkDays = 0;
 
   // 平日の計算
   if (workData.weekday) {
     const regularHours = workData.weekday['所定時間'] || 0;
-    salary.regular += (regularHours * 60) * (HOURLY_RATE / 60);
+    salary.regular += (regularHours * 60) * (currentSettings.hourlyRate / 60);
 
     const overtimeHours = workData.weekday['残業'] || 0;
-    salary.overtime += (overtimeHours * 60) * (OVERTIME_RATE / 60);
+    salary.overtime += (overtimeHours * 60) * (currentSettings.overtimeRate / 60);
+
+    const nightHours = workData.weekday['深夜労働'] || 0;
+    salary.night += (nightHours * 60) * (currentSettings.nightRate / 60);
+
+    const nightOvertimeHours = workData.weekday['深夜残業'] || 0;
+    salary.nightOvertime += (nightOvertimeHours * 60) * (currentSettings.nightOvertimeRate / 60);
+
+    // 平日の出勤日数
+    totalWorkDays += workData.weekday['出勤日数'] || 0;
   }
 
   // 休日の計算
   if (workData.holiday) {
     const holidayHours = workData.holiday['所定時間'] || 0;
     const holidayOvertime = workData.holiday['残業'] || 0;
-    salary.overtime += ((holidayHours + holidayOvertime) * 60) * (OVERTIME_RATE / 60);
+    salary.overtime += ((holidayHours + holidayOvertime) * 60) * (currentSettings.overtimeRate / 60);
+
+    const holidayNightHours = workData.holiday['深夜労働'] || 0;
+    salary.night += (holidayNightHours * 60) * (currentSettings.nightRate / 60);
+
+    const holidayNightOvertimeHours = workData.holiday['深夜残業'] || 0;
+    salary.nightOvertime += (holidayNightOvertimeHours * 60) * (currentSettings.nightOvertimeRate / 60);
+
+    // 休日の出勤日数
+    totalWorkDays += workData.holiday['出勤日数'] || 0;
   }
 
+  // 交通費の計算
+  salary.transportation = currentSettings.transportationFee * totalWorkDays;
+
   // 合計の計算
-  salary.total = salary.regular + salary.overtime;
+  salary.total = salary.regular + salary.overtime + salary.night + salary.nightOvertime + salary.transportation;
 
   return salary;
 }
@@ -52,6 +106,9 @@ function createSalarySection(salary) {
         <tr>
           <th class="fixed_work"><p>基本給</p></th>
           <th class="overtime_work"><p>残業代</p></th>
+          <th class="night_work"><p>深夜労働</p></th>
+          <th class="night_overtime_work"><p>深夜残業</p></th>
+          <th class="transportation"><p>交通費</p></th>
           <th class="all_work_time"><p>合計</p></th>
         </tr>
       </thead>
@@ -59,6 +116,9 @@ function createSalarySection(salary) {
         <tr>
           <td class="fixed_work">${Math.floor(salary.regular).toLocaleString()}円</td>
           <td class="overtime_work">${Math.floor(salary.overtime).toLocaleString()}円</td>
+          <td class="night_work">${Math.floor(salary.night).toLocaleString()}円</td>
+          <td class="night_overtime_work">${Math.floor(salary.nightOvertime).toLocaleString()}円</td>
+          <td class="transportation">${Math.floor(salary.transportation).toLocaleString()}円</td>
           <td class="all_work_time">${Math.floor(salary.total).toLocaleString()}円</td>
         </tr>
       </tbody>
@@ -91,7 +151,10 @@ function updateSalaryDisplay(workData) {
     const cells = salarySection.querySelectorAll('td');
     cells[0].textContent = `${Math.floor(salary.regular).toLocaleString()}円`;
     cells[1].textContent = `${Math.floor(salary.overtime).toLocaleString()}円`;
-    cells[2].textContent = `${Math.floor(salary.total).toLocaleString()}円`;
+    cells[2].textContent = `${Math.floor(salary.night).toLocaleString()}円`;
+    cells[3].textContent = `${Math.floor(salary.nightOvertime).toLocaleString()}円`;
+    cells[4].textContent = `${Math.floor(salary.transportation).toLocaleString()}円`;
+    cells[5].textContent = `${Math.floor(salary.total).toLocaleString()}円`;
   }
 
   return salary;
@@ -140,6 +203,21 @@ function parseWorkTimeTable() {
     });
   });
 
+  // 日数集計セクションから出勤日数を取得
+  const daysCountSection = document.querySelector('.specific-daysCount_1');
+  if (daysCountSection) {
+    // 平日出勤日数
+    const weekdayDiv = daysCountSection.querySelector('div.work_count');
+    if (weekdayDiv) {
+      workData.weekday['出勤日数'] = parseFloat(weekdayDiv.textContent.trim()) || 0;
+    }
+    // 休日出勤日数
+    const holidayDiv = daysCountSection.querySelector('div.holiday_work_count');
+    if (holidayDiv) {
+      workData.holiday['出勤日数'] = parseFloat(holidayDiv.textContent.trim()) || 0;
+    }
+  }
+
   // 給与表示を更新
   const salary = updateSalaryDisplay(workData);
 
@@ -147,6 +225,9 @@ function parseWorkTimeTable() {
   console.log('給与計算結果:', {
     基本給: Math.floor(salary.regular) + '円',
     残業代: Math.floor(salary.overtime) + '円',
+    深夜労働: Math.floor(salary.night) + '円',
+    深夜残業: Math.floor(salary.nightOvertime) + '円',
+    交通費: Math.floor(salary.transportation) + '円',
     合計: Math.floor(salary.total) + '円'
   });
 
@@ -166,14 +247,38 @@ const observer = new MutationObserver((mutations) => {
 
 // 初期実行とObserver開始
 window.addEventListener('load', () => {
-  setTimeout(() => {
+  setTimeout(async () => {
+    // 設定を読み込んでから給与計算を実行
+    await loadSettings();
     parseWorkTimeTable();
     const targetNode = document.querySelector('.htBlock-normalTable');
     if (targetNode) {
-      observer.observe(targetNode, { 
+      observer.observe(targetNode, {
         childList: true,
-        subtree: true 
+        subtree: true
       });
     }
   }, 1000);
+});
+
+// 設定が変更されたら再計算
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync') {
+    if (changes.hourlyRate) {
+      currentSettings.hourlyRate = changes.hourlyRate.newValue;
+    }
+    if (changes.overtimeRate) {
+      currentSettings.overtimeRate = changes.overtimeRate.newValue;
+    }
+    if (changes.nightRate) {
+      currentSettings.nightRate = changes.nightRate.newValue;
+    }
+    if (changes.nightOvertimeRate) {
+      currentSettings.nightOvertimeRate = changes.nightOvertimeRate.newValue;
+    }
+    if (changes.transportationFee) {
+      currentSettings.transportationFee = changes.transportationFee.newValue;
+    }
+    parseWorkTimeTable();
+  }
 });

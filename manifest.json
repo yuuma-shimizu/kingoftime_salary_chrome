@@ -1,9 +1,22 @@
 {
     "manifest_version": 3,
-    "name": "KingOfTime Table Parser",
-    "version": "1.0",
+    "name": "KingOfTime給与計算",
+    "version": "1.3",
     "description": "Parses work time tables from KingOfTime admin pages",
-    "permissions": ["activeTab"],
+    "permissions": [
+      "activeTab",
+      "storage"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_title": "KingOfTime給与計算 - クリックで設定"
+    },
+    "options_ui": {
+      "page": "options.html",
+      "open_in_tab": true
+    },
     "content_scripts": [
       {
         "matches": ["https://s3.ta.kingoftime.jp/admin/*"],
