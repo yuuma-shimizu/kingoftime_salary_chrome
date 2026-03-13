@@ -1,11 +1,13 @@
 {
     "manifest_version": 3,
     "name": "KingOfTime給与計算",
-    "version": "1.8",
+    "version": "1.9",
     "description": "Parses work time tables from KingOfTime admin pages",
     "permissions": [
       "activeTab",
-      "storage"
+      "storage",
+      "tabs",
+      "alarms"
     ],
     "background": {
       "service_worker": "background.js"
