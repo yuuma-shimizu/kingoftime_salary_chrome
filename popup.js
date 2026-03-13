@@ -121,6 +121,46 @@ function loadWorkStatusFromStorage() {
   });
 }
 
+// ストレージから給与データを読み込む
+function loadSalaryFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['salaryData'], (result) => {
+      resolve(result.salaryData || null);
+    });
+  });
+}
+
+// 今月の累積給与を表示
+async function showMonthlySalary() {
+  const salaryData = await loadSalaryFromStorage();
+  const now = new Date();
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const content = document.getElementById('content');
+
+  // 既存の月次給与セクションを削除
+  const existingSection = document.getElementById('monthly-salary');
+  if (existingSection) existingSection.remove();
+
+  if (salaryData && salaryData.yearMonth === currentYearMonth) {
+    const section = document.createElement('div');
+    section.id = 'monthly-salary';
+    section.className = 'monthly-salary';
+    section.innerHTML = `
+      <div class="monthly-header">${now.getMonth() + 1}月の累積給与</div>
+      <div class="monthly-total">${salaryData.total.toLocaleString()}円</div>
+      <div class="monthly-details">
+        <span>基本: ${salaryData.regular.toLocaleString()}</span>
+        <span>残業: ${salaryData.overtime.toLocaleString()}</span>
+        <span>交通費: ${salaryData.transportation.toLocaleString()}</span>
+      </div>
+    `;
+
+    // content の最初に挿入
+    content.insertBefore(section, content.firstChild);
+  }
+}
+
 // 監視状態を取得
 function getMonitoringStatus() {
   return new Promise((resolve) => {
@@ -201,12 +241,16 @@ async function init() {
     } else {
       showNotWorkingUI();
     }
-    addMonitoringButton();
   } else {
     // データがない場合
     showErrorUI('監視を開始してください');
-    addMonitoringButton();
   }
+
+  // 今月の累積給与を表示
+  await showMonthlySalary();
+
+  // 監視ボタンを追加
+  addMonitoringButton();
 }
 
 document.addEventListener('DOMContentLoaded', init);

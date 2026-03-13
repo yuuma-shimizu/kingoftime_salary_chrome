@@ -221,6 +221,9 @@ function parseWorkTimeTable() {
   // 給与表示を更新
   const salary = updateSalaryDisplay(workData);
 
+  // 給与データをストレージに保存（ポップアップ用）
+  saveSalaryToStorage(salary);
+
   console.log('勤務時間データ:', workData);
   console.log('給与計算結果:', {
     基本給: Math.floor(salary.regular) + '円',
@@ -235,6 +238,25 @@ function parseWorkTimeTable() {
     workData,
     salary
   };
+}
+
+// 給与データをストレージに保存
+function saveSalaryToStorage(salary) {
+  const now = new Date();
+  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  chrome.storage.local.set({
+    salaryData: {
+      regular: Math.floor(salary.regular),
+      overtime: Math.floor(salary.overtime),
+      night: Math.floor(salary.night),
+      nightOvertime: Math.floor(salary.nightOvertime),
+      transportation: Math.floor(salary.transportation),
+      total: Math.floor(salary.total),
+      yearMonth: yearMonth,
+      lastUpdated: Date.now()
+    }
+  });
 }
 
 // テーブルの変更を監視（メインテーブルのみ）
