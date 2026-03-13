@@ -16,7 +16,7 @@ function updateAutoCalcValues() {
 
   // 残業時給
   if (document.getElementById('autoCalcOvertime').checked) {
-    const calcValue = Math.floor(hourlyRate * OVERTIME_MULTIPLIER);
+    const calcValue = Math.ceil(hourlyRate * OVERTIME_MULTIPLIER);
     document.getElementById('overtimeRate').value = calcValue;
     document.getElementById('overtimeCalcInfo').textContent = `${hourlyRate} × ${OVERTIME_MULTIPLIER} = ${calcValue}円`;
   } else {
@@ -25,7 +25,7 @@ function updateAutoCalcValues() {
 
   // 深夜時給
   if (document.getElementById('autoCalcNight').checked) {
-    const calcValue = Math.floor(hourlyRate * NIGHT_MULTIPLIER);
+    const calcValue = Math.ceil(hourlyRate * NIGHT_MULTIPLIER);
     document.getElementById('nightRate').value = calcValue;
     document.getElementById('nightCalcInfo').textContent = `${hourlyRate} × ${NIGHT_MULTIPLIER} = ${calcValue}円`;
   } else {
@@ -34,7 +34,7 @@ function updateAutoCalcValues() {
 
   // 深夜残業時給
   if (document.getElementById('autoCalcNightOvertime').checked) {
-    const calcValue = Math.floor(hourlyRate * NIGHT_OVERTIME_MULTIPLIER);
+    const calcValue = Math.ceil(hourlyRate * NIGHT_OVERTIME_MULTIPLIER);
     document.getElementById('nightOvertimeRate').value = calcValue;
     document.getElementById('nightOvertimeCalcInfo').textContent = `${hourlyRate} × ${NIGHT_OVERTIME_MULTIPLIER} = ${calcValue}円`;
   } else {
