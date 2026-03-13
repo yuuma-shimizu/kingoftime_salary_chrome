@@ -288,6 +288,48 @@ function startStatusMonitoring() {
   }, 30000); // 30秒ごとにチェック
 }
 
+// ========== セッション維持機能 ==========
+
+// セッションを維持するためにサーバーにリクエストを送る
+async function keepSessionAlive() {
+  try {
+    // 現在のページをfetchでリクエスト（セッションCookieが送られる）
+    const response = await fetch(window.location.href, {
+      method: 'GET',
+      credentials: 'include',  // Cookieを含める
+      cache: 'no-store'        // キャッシュを使わない
+    });
+
+    if (response.ok) {
+      console.log('セッション維持: サーバーにpingを送信しました');
+    } else {
+      console.warn('セッション維持: レスポンスエラー', response.status);
+    }
+  } catch (e) {
+    console.error('セッション維持: リクエスト失敗', e);
+  }
+
+  // クライアント側のイベントもシミュレート
+  const event = new MouseEvent('mousemove', {
+    bubbles: true,
+    cancelable: true,
+    clientX: Math.random() * 100,
+    clientY: Math.random() * 100
+  });
+  document.dispatchEvent(event);
+}
+
+// 10分ごとにセッション維持（30分タイムアウトに対して余裕を持たせる）
+let keepAliveInterval = null;
+
+function startKeepAlive() {
+  if (keepAliveInterval) return;
+
+  // 10分ごとに実行
+  keepAliveInterval = setInterval(keepSessionAlive, 10 * 60 * 1000);
+  console.log('セッション維持機能を開始（10分間隔）');
+}
+
 // 初期実行とObserver開始
 window.addEventListener('load', () => {
   setTimeout(async () => {
@@ -305,6 +347,8 @@ window.addEventListener('load', () => {
     checkAndStartRealtime();
     // 定期監視開始
     startStatusMonitoring();
+    // セッション維持開始
+    startKeepAlive();
   }, 1000);
 });
 
