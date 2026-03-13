@@ -467,10 +467,26 @@ function stopRealtime() {
   }
 }
 
+// 勤務状態をストレージに保存
+function saveWorkStatusToStorage(status) {
+  const today = new Date().toDateString();
+  chrome.storage.local.set({
+    workStatus: {
+      isWorking: status.isWorking,
+      startTime: status.startTime,
+      date: today,
+      lastUpdated: Date.now()
+    }
+  });
+}
+
 // 勤務中チェックと自動開始
 function checkAndStartRealtime() {
   const status = checkWorkingStatus();
   console.log('勤務状態:', status);
+
+  // ストレージに保存（ポップアップ用）
+  saveWorkStatusToStorage(status);
 
   if (status.isWorking && status.startTime) {
     startRealtime(status.startTime);

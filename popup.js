@@ -112,6 +112,15 @@ function showErrorUI(message) {
   content.innerHTML = `<div class="error">${message}</div>`;
 }
 
+// ストレージから勤務状態を読み込む
+function loadWorkStatusFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['workStatus'], (result) => {
+      resolve(result.workStatus || null);
+    });
+  });
+}
+
 // 初期化
 async function init() {
   await loadSettings();
@@ -122,30 +131,40 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
-  // アクティブなタブに問い合わせ
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const tab = tabs[0];
+  // ストレージから勤務状態を取得
+  const workStatus = await loadWorkStatusFromStorage();
+  const today = new Date().toDateString();
 
-    // KingOfTimeのページかチェック
-    if (!tab.url || !tab.url.includes('kingoftime.jp')) {
-      showErrorUI('KingOfTimeのページを開いてください');
-      return;
+  // データが今日のものかチェック
+  if (workStatus && workStatus.date === today) {
+    if (workStatus.isWorking && workStatus.startTime) {
+      showWorkingUI(workStatus.startTime);
+    } else {
+      showNotWorkingUI();
     }
+  } else {
+    // データがない場合はアクティブタブを確認
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs[0];
 
-    // コンテントスクリプトにメッセージ送信
-    chrome.tabs.sendMessage(tab.id, { action: 'getWorkStatus' }, (response) => {
-      if (chrome.runtime.lastError) {
-        showErrorUI('ページを再読み込みしてください');
-        return;
-      }
+      if (tab.url && tab.url.includes('kingoftime.jp')) {
+        chrome.tabs.sendMessage(tab.id, { action: 'getWorkStatus' }, (response) => {
+          if (chrome.runtime.lastError) {
+            showErrorUI('KingOfTimeを開いて<br>ページを読み込んでください');
+            return;
+          }
 
-      if (response && response.isWorking && response.startTime) {
-        showWorkingUI(response.startTime);
+          if (response && response.isWorking && response.startTime) {
+            showWorkingUI(response.startTime);
+          } else {
+            showNotWorkingUI();
+          }
+        });
       } else {
-        showNotWorkingUI();
+        showErrorUI('KingOfTimeを開いて<br>ページを読み込んでください');
       }
     });
-  });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
