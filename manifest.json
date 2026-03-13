@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "KingOfTime給与計算",
-    "version": "1.6",
+    "version": "1.7",
     "description": "Parses work time tables from KingOfTime admin pages",
     "permissions": [
       "activeTab",
@@ -11,7 +11,8 @@
       "service_worker": "background.js"
     },
     "action": {
-      "default_title": "KingOfTime給与計算 - クリックで設定"
+      "default_title": "KingOfTime給与計算",
+      "default_popup": "popup.html"
     },
     "options_ui": {
       "page": "options.html",

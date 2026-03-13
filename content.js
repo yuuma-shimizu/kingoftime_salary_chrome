@@ -476,3 +476,12 @@ function checkAndStartRealtime() {
     startRealtime(status.startTime);
   }
 }
+
+// ポップアップからのメッセージを受信
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'getWorkStatus') {
+    const status = checkWorkingStatus();
+    sendResponse(status);
+  }
+  return true;
+});
