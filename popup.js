@@ -65,7 +65,7 @@ function updateDisplay() {
 
   document.getElementById('elapsed').textContent = formatElapsedTime(elapsedSeconds);
   document.getElementById('rate-type').textContent = rateType;
-  document.getElementById('earnings').textContent = currentEarnings.toFixed(0);
+  document.getElementById('earnings').textContent = Math.floor(currentEarnings).toLocaleString();
 
   // リアルタイム累積を更新
   const realtimeTotal = document.getElementById('realtime-total');
