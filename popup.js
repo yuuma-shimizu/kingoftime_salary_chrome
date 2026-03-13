@@ -170,54 +170,27 @@ function getMonitoringStatus() {
   });
 }
 
-// 監視ボタンを追加
-async function addMonitoringButton() {
+// 監視状態を表示
+async function showMonitoringStatus() {
   const status = await getMonitoringStatus();
   const content = document.getElementById('content');
 
-  // 既存のボタンを削除
-  const existingBtn = document.getElementById('monitor-btn');
-  if (existingBtn) existingBtn.remove();
+  // 既存のステータスを削除
   const existingStatus = document.getElementById('monitoring-status');
   if (existingStatus) existingStatus.remove();
 
-  const btn = document.createElement('button');
-  btn.id = 'monitor-btn';
+  const statusDiv = document.createElement('div');
+  statusDiv.id = 'monitoring-status';
+  statusDiv.className = 'monitoring-status';
 
   if (status.isMonitoring) {
-    btn.className = 'monitor-btn stop';
-    btn.textContent = '監視を停止';
-    btn.onclick = async () => {
-      await chrome.runtime.sendMessage({ action: 'stopMonitoring' });
-      addMonitoringButton();
-    };
-
-    const statusDiv = document.createElement('div');
-    statusDiv.id = 'monitoring-status';
-    statusDiv.className = 'monitoring-status';
-    statusDiv.textContent = '監視中（5分ごとに更新）';
-    content.appendChild(statusDiv);
+    statusDiv.textContent = '自動監視中（5分ごとに更新）';
   } else {
-    btn.className = 'monitor-btn start';
-    btn.textContent = '監視を開始';
-    btn.onclick = async () => {
-      const result = await chrome.runtime.sendMessage({ action: 'startMonitoring' });
-      if (result && result.success) {
-        addMonitoringButton();
-        // 少し待ってから状態を更新
-        setTimeout(async () => {
-          const workStatus = await loadWorkStatusFromStorage();
-          const today = new Date().toDateString();
-          if (workStatus && workStatus.date === today && workStatus.isWorking) {
-            showWorkingUI(workStatus.startTime);
-            addMonitoringButton();
-          }
-        }, 3000);
-      }
-    };
+    statusDiv.style.color = '#dc3545';
+    statusDiv.textContent = 'KingOfTimeにログインしてください';
   }
 
-  content.appendChild(btn);
+  content.appendChild(statusDiv);
 }
 
 // 初期化
@@ -243,14 +216,14 @@ async function init() {
     }
   } else {
     // データがない場合
-    showErrorUI('監視を開始してください');
+    showErrorUI('KingOfTimeにログインして<br>データを取得中...');
   }
 
   // 今月の累積給与を表示
   await showMonthlySalary();
 
-  // 監視ボタンを追加
-  addMonitoringButton();
+  // 監視状態を表示
+  showMonitoringStatus();
 }
 
 document.addEventListener('DOMContentLoaded', init);

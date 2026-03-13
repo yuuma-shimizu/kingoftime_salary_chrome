@@ -109,3 +109,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
+
+// 拡張機能インストール時に自動監視開始
+chrome.runtime.onInstalled.addListener(() => {
+  startMonitoring();
+});
+
+// ブラウザ起動時に自動監視開始
+chrome.runtime.onStartup.addListener(() => {
+  startMonitoring();
+});
