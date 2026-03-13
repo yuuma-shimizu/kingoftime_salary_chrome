@@ -348,8 +348,87 @@ function findTodayRow() {
   return null;
 }
 
-// 勤務中かどうかを判断
+// localStorageから出退勤記録を取得
+function getAttendanceRecordsFromLocalStorage() {
+  try {
+    // PARSONAL_BROWSER_RECORDER@RECORD_HISTORY_で始まるキーを探す
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('PARSONAL_BROWSER_RECORDER@RECORD_HISTORY_')) {
+        const data = localStorage.getItem(key);
+        if (data) {
+          return JSON.parse(data);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('出退勤記録の取得に失敗:', e);
+  }
+  return null;
+}
+
+// record_timestampを解析（YYYYMMDDHHmmss形式）
+function parseRecordTimestamp(timestamp) {
+  if (!timestamp || timestamp.length < 12) return null;
+
+  const year = parseInt(timestamp.substring(0, 4), 10);
+  const month = parseInt(timestamp.substring(4, 6), 10) - 1;
+  const day = parseInt(timestamp.substring(6, 8), 10);
+  const hour = parseInt(timestamp.substring(8, 10), 10);
+  const minute = parseInt(timestamp.substring(10, 12), 10);
+  const second = timestamp.length >= 14 ? parseInt(timestamp.substring(12, 14), 10) : 0;
+
+  return new Date(year, month, day, hour, minute, second);
+}
+
+// 勤務中かどうかを判断（localStorage優先、フォールバックでDOM）
 function checkWorkingStatus() {
+  // まずlocalStorageから取得を試みる
+  const records = getAttendanceRecordsFromLocalStorage();
+
+  if (records && Array.isArray(records) && records.length > 0) {
+    // 今日の日付
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+
+    // 今日のレコードをフィルタして時系列でソート
+    const todayRecords = records
+      .filter(r => r.record_timestamp && r.record_timestamp.startsWith(todayStr))
+      .sort((a, b) => {
+        const timeA = a.record_timestamp || '';
+        const timeB = b.record_timestamp || '';
+        return timeB.localeCompare(timeA); // 降順（最新が先頭）
+      });
+
+    if (todayRecords.length > 0) {
+      const latestRecord = todayRecords[0];
+
+      // 最新が「出勤」なら勤務中
+      if (latestRecord.name === '出勤') {
+        const recordDate = parseRecordTimestamp(latestRecord.record_timestamp);
+        const startTime = recordDate ?
+          `${String(recordDate.getHours()).padStart(2, '0')}:${String(recordDate.getMinutes()).padStart(2, '0')}` :
+          null;
+
+        console.log('localStorage: 勤務中 - 出勤時間:', startTime);
+        return { isWorking: true, startTime: startTime };
+      }
+
+      // 最新が「退勤」なら勤務外
+      if (latestRecord.name === '退勤') {
+        console.log('localStorage: 勤務外（退勤済み）');
+        return { isWorking: false, startTime: null };
+      }
+    }
+  }
+
+  // localStorageにデータがない場合はDOMからフォールバック
+  console.log('localStorageにデータなし、DOMから取得を試みます');
+  return checkWorkingStatusFromDOM();
+}
+
+// DOMから勤務状態を取得（フォールバック用）
+function checkWorkingStatusFromDOM() {
   const todayRow = findTodayRow();
   if (!todayRow) {
     return { isWorking: false, startTime: null };
